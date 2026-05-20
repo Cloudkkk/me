@@ -65,8 +65,8 @@ export default function Home() {
         for (let x = 0; x < w; x += TEXT_PARTICLE_DENSITY) {
           if (imageData.data[(y * w + x) * 4 + 3] > 128) {
             textParticles.push({
-              x: Math.random() * w,
-              y: Math.random() * h,
+              x,
+              y,
               baseX: x,
               baseY: y,
               vx: 0,
