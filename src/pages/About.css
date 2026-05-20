@@ -1,0 +1,241 @@
+.about-page {
+  min-height: 100vh;
+  padding: 8rem 2rem 4rem;
+  position: relative;
+}
+
+.about-header {
+  max-width: 1000px;
+  margin: 0 auto 3rem;
+}
+
+.about-grid {
+  max-width: 1000px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+}
+
+@media (max-width: 768px) {
+  .about-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.about-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.ascii-art {
+  font-family: var(--mono);
+  font-size: 0.5rem;
+  line-height: 1.2;
+  color: var(--fg-dim);
+  white-space: pre;
+  overflow-x: auto;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-secondary);
+}
+
+.terminal-window {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg-secondary);
+}
+
+.terminal-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.6rem 1rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid var(--border);
+}
+
+.terminal-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.terminal-dot.red { background: #666; }
+.terminal-dot.yellow { background: #999; }
+.terminal-dot.green { background: #ccc; }
+
+.terminal-title {
+  font-size: 0.7rem;
+  color: var(--fg-muted);
+  margin-left: 0.5rem;
+}
+
+.terminal-body {
+  padding: 1.2rem;
+  font-size: 0.82rem;
+  line-height: 1.8;
+  color: var(--fg-dim);
+}
+
+.prompt {
+  color: var(--fg-dim);
+  margin-right: 0.5rem;
+}
+
+.bio-text {
+  color: var(--fg);
+  opacity: 0.8;
+  padding-left: 1.2rem;
+}
+
+.cursor-blink {
+  animation: blink 1s step-end infinite;
+}
+
+.about-right {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.stat-card {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1.2rem;
+  text-align: center;
+  background: var(--bg-secondary);
+  transition: border-color 0.3s;
+}
+
+.stat-card:hover {
+  border-color: var(--border-hover);
+}
+
+.stat-value {
+  display: block;
+  font-family: var(--sans);
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: -0.02em;
+}
+
+.stat-label {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--fg-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.skills-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.skills-title {
+  margin-bottom: 0.5rem;
+}
+
+.skill-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.skill-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+}
+
+.skill-name {
+  color: var(--fg);
+  font-family: var(--mono);
+}
+
+.skill-level {
+  color: var(--fg-muted);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+}
+
+.skill-track {
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.skill-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--fg-muted), var(--accent));
+  border-radius: 2px;
+  transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.links-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.links-title {
+  margin-bottom: 0.3rem;
+}
+
+.link-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ext-link {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  color: var(--fg-dim);
+  transition: color 0.3s, transform 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ext-link:hover {
+  color: var(--accent);
+  opacity: 1;
+  transform: translateX(4px);
+}
+
+.link-icon {
+  color: var(--fg-muted);
+  transition: color 0.3s;
+}
+
+.ext-link:hover .link-icon {
+  color: var(--accent);
+}
+
+.about-grid-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.012) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.012) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none;
+}
