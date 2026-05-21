@@ -22,9 +22,7 @@ const PARTICLE_SIZE = 1.8
 const TEXT_PARTICLE_DENSITY = 4
 const BG_PARTICLE_COUNT = 80
 const MOUSE_RADIUS = 40
-const RETURN_SPEED = 0.02
 const SCATTER_FORCE = 2
-const FRICTION = 0.95
 const CONNECTION_LIMIT = 60
 
 export default function Home() {
@@ -65,21 +63,23 @@ export default function Home() {
       const imageData = sampleCtx.getImageData(0, 0, w, h)
       const textParticles: Particle[] = []
 
-      const assignGalaxyProps = (p: any) => {
+      const createGalaxyProps = () => {
         const arms = 4
         const armOffset = (Math.PI * 2) / arms
         const randomArm = Math.floor(Math.random() * arms)
         const distance = Math.pow(Math.random(), 1.2) * Math.max(w, h) * 0.6
         const angle = randomArm * armOffset + distance * 0.005 + (Math.random() - 0.5) * 0.8
-        p.galaxyAngle = angle
-        p.galaxyRadius = distance
-        p.galaxySpeed = 0.0005 + (Math.random() * 0.0015)
+        return {
+          galaxyAngle: angle,
+          galaxyRadius: distance,
+          galaxySpeed: 0.0005 + (Math.random() * 0.0015)
+        }
       }
 
       for (let y = 0; y < h; y += TEXT_PARTICLE_DENSITY) {
         for (let x = 0; x < w; x += TEXT_PARTICLE_DENSITY) {
           if (imageData.data[(y * w + x) * 4 + 3] > 128) {
-            const p: any = {
+            const p: Particle = {
               x,
               y,
               baseX: x,
@@ -89,8 +89,8 @@ export default function Home() {
               size: PARTICLE_SIZE + Math.random() * 0.6,
               alpha: 0.6 + Math.random() * 0.4,
               isText: true,
+              ...createGalaxyProps()
             }
-            assignGalaxyProps(p)
             textParticles.push(p)
           }
         }
@@ -99,16 +99,15 @@ export default function Home() {
       const bgParticles: Particle[] = Array.from({ length: BG_PARTICLE_COUNT }, () => {
         const bx = Math.random() * w
         const by = Math.random() * h
-        const p: any = {
+        return {
           x: bx, y: by, baseX: bx, baseY: by,
           vx: (Math.random() - 0.5) * 0.3,
           vy: (Math.random() - 0.5) * 0.3,
           size: Math.random() * 1.2 + 0.3,
           alpha: Math.random() * 0.25 + 0.05,
           isText: false,
+          ...createGalaxyProps()
         }
-        assignGalaxyProps(p)
-        return p
       })
 
       particlesRef.current = [...textParticles, ...bgParticles]
