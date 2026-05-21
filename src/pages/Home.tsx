@@ -69,11 +69,11 @@ export default function Home() {
         const arms = 4
         const armOffset = (Math.PI * 2) / arms
         const randomArm = Math.floor(Math.random() * arms)
-        const distance = Math.pow(Math.random(), 1.5) * Math.min(w, h) * 0.4
-        const angle = randomArm * armOffset + distance * 0.008 + (Math.random() - 0.5) * 0.8
+        const distance = Math.pow(Math.random(), 1.2) * Math.max(w, h) * 0.6
+        const angle = randomArm * armOffset + distance * 0.005 + (Math.random() - 0.5) * 0.8
         p.galaxyAngle = angle
         p.galaxyRadius = distance
-        p.galaxySpeed = 0.001 + (Math.random() * 0.002)
+        p.galaxySpeed = 0.0005 + (Math.random() * 0.0015)
       }
 
       for (let y = 0; y < h; y += TEXT_PARTICLE_DENSITY) {
@@ -174,12 +174,10 @@ export default function Home() {
             if (nearCount < CONNECTION_LIMIT) nearBuf[nearCount++] = p
           }
 
-          p.vx += (targetX - p.x) * RETURN_SPEED
-          p.vy += (targetY - p.y) * RETURN_SPEED
-          p.vx *= FRICTION
-          p.vy *= FRICTION
-          p.x += p.vx
-          p.y += p.vy
+          p.vx *= 0.85
+          p.vy *= 0.85
+          p.x += p.vx + (targetX - p.x) * 0.04
+          p.y += p.vy + (targetY - p.y) * 0.04
         } else {
           if (p.isText) {
             if (distSq < mouseRadiusSq) {
@@ -191,12 +189,10 @@ export default function Home() {
               if (nearCount < CONNECTION_LIMIT) nearBuf[nearCount++] = p
             }
 
-            p.vx += (p.baseX - p.x) * RETURN_SPEED
-            p.vy += (p.baseY - p.y) * RETURN_SPEED
-            p.vx *= FRICTION
-            p.vy *= FRICTION
-            p.x += p.vx
-            p.y += p.vy
+            p.vx *= 0.85
+            p.vy *= 0.85
+            p.x += p.vx + (p.baseX - p.x) * 0.04
+            p.y += p.vy + (p.baseY - p.y) * 0.04
           } else {
             const speedSq = p.vx * p.vx + p.vy * p.vy
             if (speedSq > 0.05) {
