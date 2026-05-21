@@ -14,19 +14,15 @@ const MAX_HISTORY_MESSAGES = 10
 
 /**
  * 根据环境变量自动推断 LLM 接入配置：
- * - VITE_CHAT_DIRECT=true：直连阿里云 DashScope，无需代理（AK 暴露在前端）
- * - VITE_CHAT_PROXY_URL：通过 Worker/FC 代理
+ * - VITE_CHAT_PROXY_URL：通过 FC/Worker 代理（LangChain 会自动拼 /chat/completions）
  * - 开发环境：通过 Vite proxy 转发到本地 /v1
  */
 function getDefaultConfig(): AgentConfig {
-  const directMode = import.meta.env.VITE_CHAT_DIRECT === 'true'
   const proxyUrl = import.meta.env.VITE_CHAT_PROXY_URL
   const isDev = import.meta.env.DEV
 
   let endpoint = ''
-  if (directMode) {
-    endpoint = 'https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1'
-  } else if (proxyUrl) {
+  if (proxyUrl) {
     endpoint = proxyUrl.replace(/\/chat\/completions\/?$/, '').replace(/\/$/, '')
   } else if (isDev) {
     endpoint = `${window.location.origin}/v1`
