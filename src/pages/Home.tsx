@@ -7,6 +7,9 @@ interface Particle {
   y: number
   baseX: number
   baseY: number
+  galaxyAngle: number
+  galaxyRadius: number
+  galaxySpeed: number
   vx: number
   vy: number
   size: number
@@ -29,6 +32,7 @@ export default function Home() {
   const particlesRef = useRef<Particle[]>([])
   const mouseRef = useRef({ x: -9999, y: -9999 })
   const animFrameRef = useRef<number>(0)
+  const isChatFocusedRef = useRef(false)
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -61,10 +65,21 @@ export default function Home() {
       const imageData = sampleCtx.getImageData(0, 0, w, h)
       const textParticles: Particle[] = []
 
+      const assignGalaxyProps = (p: any) => {
+        const arms = 4
+        const armOffset = (Math.PI * 2) / arms
+        const randomArm = Math.floor(Math.random() * arms)
+        const distance = Math.pow(Math.random(), 1.5) * Math.min(w, h) * 0.4
+        const angle = randomArm * armOffset + distance * 0.008 + (Math.random() - 0.5) * 0.8
+        p.galaxyAngle = angle
+        p.galaxyRadius = distance
+        p.galaxySpeed = 0.001 + (Math.random() * 0.002)
+      }
+
       for (let y = 0; y < h; y += TEXT_PARTICLE_DENSITY) {
         for (let x = 0; x < w; x += TEXT_PARTICLE_DENSITY) {
           if (imageData.data[(y * w + x) * 4 + 3] > 128) {
-            textParticles.push({
+            const p: any = {
               x,
               y,
               baseX: x,
@@ -74,7 +89,9 @@ export default function Home() {
               size: PARTICLE_SIZE + Math.random() * 0.6,
               alpha: 0.6 + Math.random() * 0.4,
               isText: true,
-            })
+            }
+            assignGalaxyProps(p)
+            textParticles.push(p)
           }
         }
       }
@@ -82,7 +99,7 @@ export default function Home() {
       const bgParticles: Particle[] = Array.from({ length: BG_PARTICLE_COUNT }, () => {
         const bx = Math.random() * w
         const by = Math.random() * h
-        return {
+        const p: any = {
           x: bx, y: by, baseX: bx, baseY: by,
           vx: (Math.random() - 0.5) * 0.3,
           vy: (Math.random() - 0.5) * 0.3,
@@ -90,6 +107,8 @@ export default function Home() {
           alpha: Math.random() * 0.25 + 0.05,
           isText: false,
         }
+        assignGalaxyProps(p)
+        return p
       })
 
       particlesRef.current = [...textParticles, ...bgParticles]
@@ -130,6 +149,7 @@ export default function Home() {
       const mouseRadiusSq = MOUSE_RADIUS * MOUSE_RADIUS
       const bgMouseRadius = MOUSE_RADIUS * 1.3
       const bgMouseRadiusSq = bgMouseRadius * bgMouseRadius
+      const isFocused = isChatFocusedRef.current
 
       let nearCount = 0
       const nearBuf: Particle[] = []
@@ -140,7 +160,11 @@ export default function Home() {
         const dy = my - p.y
         const distSq = dx * dx + dy * dy
 
-        if (p.isText) {
+        if (isFocused) {
+          p.galaxyAngle += p.galaxySpeed
+          const targetX = w / 2 + Math.cos(p.galaxyAngle) * p.galaxyRadius
+          const targetY = h / 2 + Math.sin(p.galaxyAngle) * p.galaxyRadius
+
           if (distSq < mouseRadiusSq) {
             const dist = Math.sqrt(distSq)
             const angle = Math.atan2(dy, dx)
@@ -150,27 +174,51 @@ export default function Home() {
             if (nearCount < CONNECTION_LIMIT) nearBuf[nearCount++] = p
           }
 
-          p.vx += (p.baseX - p.x) * RETURN_SPEED
-          p.vy += (p.baseY - p.y) * RETURN_SPEED
+          p.vx += (targetX - p.x) * RETURN_SPEED
+          p.vy += (targetY - p.y) * RETURN_SPEED
           p.vx *= FRICTION
           p.vy *= FRICTION
           p.x += p.vx
           p.y += p.vy
         } else {
-          p.x += p.vx
-          p.y += p.vy
+          if (p.isText) {
+            if (distSq < mouseRadiusSq) {
+              const dist = Math.sqrt(distSq)
+              const angle = Math.atan2(dy, dx)
+              const force = (MOUSE_RADIUS - dist) / MOUSE_RADIUS * SCATTER_FORCE
+              p.vx -= Math.cos(angle) * force
+              p.vy -= Math.sin(angle) * force
+              if (nearCount < CONNECTION_LIMIT) nearBuf[nearCount++] = p
+            }
 
-          if (distSq < bgMouseRadiusSq) {
-            const dist = Math.sqrt(distSq)
-            const angle = Math.atan2(dy, dx)
-            const force = (bgMouseRadius - dist) / bgMouseRadius * 0.25
-            p.x -= Math.cos(angle) * force
-            p.y -= Math.sin(angle) * force
-            if (nearCount < CONNECTION_LIMIT) nearBuf[nearCount++] = p
+            p.vx += (p.baseX - p.x) * RETURN_SPEED
+            p.vy += (p.baseY - p.y) * RETURN_SPEED
+            p.vx *= FRICTION
+            p.vy *= FRICTION
+            p.x += p.vx
+            p.y += p.vy
+          } else {
+            const speedSq = p.vx * p.vx + p.vy * p.vy
+            if (speedSq > 0.05) {
+              p.vx *= 0.98
+              p.vy *= 0.98
+            }
+
+            p.x += p.vx
+            p.y += p.vy
+
+            if (distSq < bgMouseRadiusSq) {
+              const dist = Math.sqrt(distSq)
+              const angle = Math.atan2(dy, dx)
+              const force = (bgMouseRadius - dist) / bgMouseRadius * 0.25
+              p.x -= Math.cos(angle) * force
+              p.y -= Math.sin(angle) * force
+              if (nearCount < CONNECTION_LIMIT) nearBuf[nearCount++] = p
+            }
+
+            if (p.x < 0 || p.x > w) p.vx *= -1
+            if (p.y < 0 || p.y > h) p.vy *= -1
           }
-
-          if (p.x < 0 || p.x > w) p.vx *= -1
-          if (p.y < 0 || p.y > h) p.vy *= -1
         }
 
         ctx.globalAlpha = p.alpha
@@ -233,7 +281,9 @@ export default function Home() {
       </div>
 
       <div className="home-chat">
-        <ChatBox />
+        <ChatBox onFocusChange={(focused) => {
+          isChatFocusedRef.current = focused
+        }} />
       </div>
 
       <div className="home-grid-overlay" />
