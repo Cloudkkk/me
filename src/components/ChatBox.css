@@ -21,8 +21,8 @@
 .chatbox-inline.expanded {
   max-height: 45vh;
   background: var(--chat-bg);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
   border-color: var(--chat-border);
   padding: 16px 20px;
 }
@@ -65,7 +65,7 @@
 .chat-line .line-prefix {
   flex-shrink: 0;
   font-weight: 700;
-  color: var(--fg-muted);
+  color: var(--fg-dim);
 }
 
 .chat-line.user .line-text {
@@ -73,7 +73,8 @@
 }
 
 .chat-line.assistant .line-text {
-  color: var(--fg-dim);
+  color: var(--fg);
+  opacity: 0.85;
 }
 
 /* ===== Loading ===== */
@@ -123,7 +124,7 @@
   font-family: var(--mono);
   font-size: 0.85rem;
   font-weight: 700;
-  color: var(--fg-muted);
+  color: var(--fg-dim);
   flex-shrink: 0;
   animation: blink 1s step-end infinite;
 }
@@ -145,8 +146,9 @@
 }
 
 .chatbox-prompt input::placeholder {
-  color: var(--fg-muted);
+  color: var(--fg-dim);
   font-style: normal;
+  opacity: 0.8;
 }
 
 .chatbox-prompt input:disabled {

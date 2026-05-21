@@ -17,8 +17,8 @@
   --border-hover: #333333;
   --grid-color: rgba(255, 255, 255, 0.02);
   --shadow-color: rgba(255, 255, 255, 0.2);
-  --chat-bg: rgba(10, 10, 10, 0.75);
-  --chat-border: rgba(255, 255, 255, 0.06);
+  --chat-bg: rgba(10, 10, 10, 0.88);
+  --chat-border: rgba(255, 255, 255, 0.08);
   --mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
   --sans: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
 }
@@ -34,8 +34,8 @@
   --border-hover: #c4bba9;
   --grid-color: rgba(0, 0, 0, 0.03);
   --shadow-color: rgba(0, 0, 0, 0.1);
-  --chat-bg: rgba(244, 240, 234, 0.75);
-  --chat-border: rgba(0, 0, 0, 0.06);
+  --chat-bg: rgba(244, 240, 234, 0.88);
+  --chat-border: rgba(0, 0, 0, 0.08);
 }
 
 html {
