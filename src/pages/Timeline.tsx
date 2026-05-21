@@ -140,11 +140,11 @@ export default function Timeline() {
       <div className="timeline-header">
         <span className="section-label"> </span>
         <h1 className="section-title">Timeline</h1>
-        <p className="section-desc">..</p>
+        {/* <p className="section-desc">..</p>
         <div className="timeline-legend">
           <span className="legend-item"><span className="legend-dot personal" />Me</span>
           <span className="legend-item"><span className="legend-dot agent" />AI Event</span>
-        </div>
+        </div> */}
       </div>
 
       <div className="timeline-container">

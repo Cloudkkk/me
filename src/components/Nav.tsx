@@ -41,7 +41,7 @@ export default function Nav() {
           data-hover
           aria-label="Toggle theme"
         >
-          {theme === 'dark' ? '☀️' : '🌙'}
+          {theme === 'dark' ? '[LIGHT]' : '[DARK]'}
         </button>
       </div>
     </nav>
