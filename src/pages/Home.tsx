@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import ChatBox from '../components/ChatBox'
+import { useTheme } from '../hooks/useTheme'
 import './Home.css'
 
 interface Particle {
@@ -31,6 +32,12 @@ export default function Home() {
   const mouseRef = useRef({ x: -9999, y: -9999 })
   const animFrameRef = useRef<number>(0)
   const isChatFocusedRef = useRef(false)
+  const { theme } = useTheme()
+  const particleColorRef = useRef(theme === 'light' ? '#1a1a1a' : '#ffffff')
+
+  useEffect(() => {
+    particleColorRef.current = theme === 'light' ? '#1a1a1a' : '#ffffff'
+  }, [theme])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -54,7 +61,7 @@ export default function Home() {
 
       const fontSize = Math.min(w * 0.12, 140)
       sampleCtx.clearRect(0, 0, w, h)
-      sampleCtx.fillStyle = '#ffffff'
+      sampleCtx.fillStyle = '#ffffff' // Just for reading alpha mask
       sampleCtx.font = `700 ${fontSize}px "Space Grotesk", sans-serif`
       sampleCtx.textAlign = 'center'
       sampleCtx.textBaseline = 'middle'
@@ -219,7 +226,7 @@ export default function Home() {
         ctx.globalAlpha = p.alpha
         ctx.beginPath()
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2)
-        ctx.fillStyle = '#fff'
+        ctx.fillStyle = particleColorRef.current
         ctx.fill()
       }
 
@@ -237,7 +244,7 @@ export default function Home() {
               ctx.beginPath()
               ctx.moveTo(nearBuf[i].x, nearBuf[i].y)
               ctx.lineTo(nearBuf[j].x, nearBuf[j].y)
-              ctx.strokeStyle = '#fff'
+              ctx.strokeStyle = particleColorRef.current
               ctx.stroke()
             }
           }

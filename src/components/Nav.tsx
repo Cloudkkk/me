@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
+import { useTheme } from '../hooks/useTheme'
 import './Nav.css'
 
 const links = [
@@ -9,6 +10,7 @@ const links = [
 
 export default function Nav() {
   const { pathname } = useLocation()
+  const { theme, toggleTheme } = useTheme()
 
   return (
     <nav className="nav">
@@ -32,9 +34,15 @@ export default function Nav() {
         ))}
       </div>
 
-      <div className="nav-status">
-        <span className="status-dot" />
-        <span className="status-text">online</span>
+      <div className="nav-right">
+        <button 
+          className="theme-toggle" 
+          onClick={toggleTheme}
+          data-hover
+          aria-label="Toggle theme"
+        >
+          {theme === 'dark' ? '☀️' : '🌙'}
+        </button>
       </div>
     </nav>
   )

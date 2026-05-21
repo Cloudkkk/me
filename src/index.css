@@ -15,8 +15,27 @@
   --accent: #ffffff;
   --border: #222222;
   --border-hover: #333333;
+  --grid-color: rgba(255, 255, 255, 0.02);
+  --shadow-color: rgba(255, 255, 255, 0.2);
+  --chat-bg: rgba(10, 10, 10, 0.75);
+  --chat-border: rgba(255, 255, 255, 0.06);
   --mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
   --sans: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+[data-theme="light"] {
+  --bg: #f4f0ea; /* Kraft paper base */
+  --bg-secondary: #eaddd1;
+  --fg: #2c2c2c;
+  --fg-dim: #7a756d;
+  --fg-muted: #a39e93;
+  --accent: #1a1a1a;
+  --border: #dcd4c7;
+  --border-hover: #c4bba9;
+  --grid-color: rgba(0, 0, 0, 0.03);
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  --chat-bg: rgba(244, 240, 234, 0.75);
+  --chat-border: rgba(0, 0, 0, 0.06);
 }
 
 html {
@@ -32,12 +51,13 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 a {
   color: var(--fg);
   text-decoration: none;
-  transition: opacity 0.2s;
+  transition: opacity 0.2s, color 0.3s ease;
 }
 
 a:hover {
@@ -45,8 +65,8 @@ a:hover {
 }
 
 ::selection {
-  background: #ffffff;
-  color: #000000;
+  background: var(--accent);
+  color: var(--bg);
 }
 
 ::-webkit-scrollbar {

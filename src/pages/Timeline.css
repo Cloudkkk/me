@@ -112,7 +112,7 @@
 .timeline-card.visible::before {
   background: var(--accent);
   border-color: var(--accent);
-  box-shadow: 0 0 8px rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 8px var(--shadow-color);
 }
 
 .card-year {
@@ -128,11 +128,39 @@
   border: 1px solid var(--border);
   border-radius: 4px;
   padding: 1.5rem;
-  transition: border-color 0.3s;
+  transition: border-color 0.3s, background-color 0.3s ease;
 }
 
 .card-content:hover {
   border-color: var(--border-hover);
+}
+
+.timeline-card.clickable {
+  cursor: pointer;
+}
+
+.timeline-card.clickable .card-content {
+  transition: border-color 0.3s, transform 0.25s;
+}
+
+.timeline-card.clickable:hover .card-content {
+  transform: translateX(4px);
+}
+
+.card-read-more {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--fg-muted);
+  margin-top: 0.75rem;
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 0.25s, transform 0.25s;
+}
+
+.timeline-card.clickable:hover .card-read-more {
+  opacity: 1;
+  transform: translateX(0);
 }
 
 .card-tag {
@@ -258,8 +286,8 @@
   height: 100%;
   z-index: -1;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.012) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.012) 1px, transparent 1px);
+    linear-gradient(var(--grid-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
   background-size: 60px 60px;
   pointer-events: none;
 }
