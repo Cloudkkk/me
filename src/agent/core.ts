@@ -32,7 +32,7 @@ function getDefaultConfig(): AgentConfig {
     endpoint,
     headers: {},
     model: 'qwen3.6-plus',
-    maxTokens: 512,
+    maxTokens: 300,
     temperature: 0.7,
     systemPrompt: SYSTEM_PROMPT,
   }
@@ -60,6 +60,9 @@ export class C1oudAgent {
       streaming: true,
       configuration: {
         baseURL: this.config.endpoint,
+        // 跨境网络延迟较高，放宽超时并禁用自动重试
+        timeout: 30000,
+        maxRetries: 0,
       },
       apiKey: import.meta.env.VITE_CHAT_API_KEY || 'not-needed',
       modelKwargs: { enable_thinking: false },

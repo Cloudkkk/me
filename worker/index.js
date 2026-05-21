@@ -1,4 +1,4 @@
-const BASE_TARGET = 'https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode'
+const TARGET = 'https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1/chat/completions'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -25,11 +25,9 @@ export default {
     }
 
     try {
-      const url = new URL(request.url)
-      const targetPath = url.pathname || '/v1/chat/completions'
-      const target = `${BASE_TARGET}${targetPath}`
-
+      const t0 = Date.now()
       const body = await request.json()
+      const t1 = Date.now()
 
       const payload = {
         model: body.model || 'qwen3.6-plus',
@@ -43,7 +41,7 @@ export default {
       if (body.tools) payload.tools = body.tools
       if (body.tool_choice) payload.tool_choice = body.tool_choice
 
-      const upstream = await fetch(target, {
+      const upstream = await fetch(TARGET, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -51,6 +49,9 @@ export default {
         },
         body: JSON.stringify(payload),
       })
+      const t2 = Date.now()
+
+      console.log(`[Worker] parse=${t1-t0}ms upstream=${t2-t1}ms total=${t2-t0}ms stream=${body.stream}`)
 
       if (body.stream) {
         return new Response(upstream.body, {
@@ -58,6 +59,7 @@ export default {
             ...CORS,
             'Content-Type': 'text/event-stream',
             'Cache-Control': 'no-cache',
+            'X-Worker-Timing': `parse=${t1-t0}ms,upstream=${t2-t1}ms`,
           },
         })
       }
