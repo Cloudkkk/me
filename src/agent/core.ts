@@ -62,6 +62,7 @@ export class C1oudAgent {
         baseURL: this.config.endpoint,
       },
       apiKey: import.meta.env.VITE_CHAT_API_KEY || 'not-needed',
+      modelKwargs: { enable_thinking: false },
     })
 
     this.model = llm.bindTools(allTools)
