@@ -36,7 +36,7 @@ export function useAgent(): UseAgentReturn {
     setActiveTools([])
 
     let fullContent = ''
-    const toolCallsAccum: ChatMessage['toolCalls'] = []
+    const toolCallsAccum: { name: string; status: 'running' | 'done'; result?: string }[] = []
 
     try {
       const stream = agentRef.current.chat(trimmed)
