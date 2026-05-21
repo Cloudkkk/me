@@ -60,7 +60,6 @@ export class C1oudAgent {
       streaming: true,
       configuration: {
         baseURL: this.config.endpoint,
-        // 跨境网络延迟较高，放宽超时并禁用自动重试
         timeout: 30000,
         maxRetries: 0,
       },
