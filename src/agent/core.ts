@@ -25,7 +25,7 @@ function getDefaultConfig(): AgentConfig {
 
   let endpoint = ''
   if (directMode) {
-    endpoint = 'https://dashscope.aliyuncs.com/compatible-mode/v1'
+    endpoint = 'https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1'
   } else if (proxyUrl) {
     endpoint = proxyUrl.replace(/\/chat\/completions\/?$/, '').replace(/\/$/, '')
   } else if (isDev) {
