@@ -1,14 +1,22 @@
 import { ChatOpenAI } from '@langchain/openai'
-import { HumanMessage, AIMessage, SystemMessage, ToolMessage } from '@langchain/core/messages'
+import { HumanMessage, AIMessage, SystemMessage, ToolMessage, AIMessageChunk } from '@langchain/core/messages'
 import type { BaseMessage } from '@langchain/core/messages'
+import type { StructuredToolInterface } from '@langchain/core/tools'
 import { SYSTEM_PROMPT } from './prompt'
 import { allTools } from './tools'
 import { consumeNavigation, type NavigateAction } from './tools/navigate'
 import type { StreamEvent, AgentConfig } from './types'
 
+/** 单次对话中最多进行几轮 tool call（防止无限循环） */
 const MAX_TOOL_ROUNDS = 5
+/** 上下文窗口中保留的最大历史消息数 */
 const MAX_HISTORY_MESSAGES = 10
 
+/**
+ * 根据环境变量自动推断 LLM 接入配置：
+ * - 生产环境：使用 VITE_CHAT_PROXY_URL（Cloudflare Worker）
+ * - 开发环境：通过 Vite proxy 转发到本地 /v1
+ */
 function getDefaultConfig(): AgentConfig {
   const proxyUrl = import.meta.env.VITE_CHAT_PROXY_URL
   const isDev = import.meta.env.DEV
@@ -30,6 +38,12 @@ function getDefaultConfig(): AgentConfig {
   }
 }
 
+/**
+ * C1oud 博客 Agent 核心类。
+ *
+ * 架构：LangChain ChatOpenAI + bindTools 实现 ReAct 风格的
+ * 流式 tool-calling loop，UI 层通过 AsyncGenerator 消费事件。
+ */
 export class C1oudAgent {
   private config: AgentConfig
   private model: ReturnType<ChatOpenAI['bindTools']>
@@ -61,10 +75,20 @@ export class C1oudAgent {
     this.history = []
   }
 
+  /** 消费 navigate tool 产生的导航动作（一次性读取后清空） */
   getNavigationAction(): NavigateAction | null {
     return consumeNavigation()
   }
 
+  /**
+   * 核心对话方法，以 AsyncGenerator 形式逐步 yield 事件流：
+   *
+   * 1. 将用户消息加入历史，拼接 system prompt 后发送给 LLM
+   * 2. 流式接收 LLM 响应，逐 token yield 给 UI
+   * 3. 若 LLM 返回 tool_calls，依次执行对应 tool 并将结果
+   *    作为 ToolMessage 追加到上下文，再次请求 LLM（ReAct loop）
+   * 4. 无 tool_calls 时结束循环，yield done 事件
+   */
   async *chat(userMessage: string): AsyncGenerator<StreamEvent> {
     if (!this.isConfigured) {
       yield { type: 'error', content: '对话服务未配置' }
@@ -73,6 +97,7 @@ export class C1oudAgent {
 
     this.history.push(new HumanMessage(userMessage))
 
+    // 滑动窗口截断，避免上下文过长
     if (this.history.length > MAX_HISTORY_MESSAGES) {
       this.history = this.history.slice(-MAX_HISTORY_MESSAGES)
     }
@@ -84,65 +109,76 @@ export class C1oudAgent {
 
     let toolRound = 0
 
+    // ReAct loop: LLM 响应 -> 解析 tool calls -> 执行 -> 回传结果 -> 再次请求
     while (toolRound < MAX_TOOL_ROUNDS) {
       try {
+        console.group(`[Agent] ReAct round ${toolRound + 1}/${MAX_TOOL_ROUNDS}`)
+        console.log('[Agent] messages count:', messages.length)
+
+        // 流式请求：逐 token yield 文本给 UI，同时用 concat 累积完整响应。
+        // qwen 流式返回 tool_calls 时 args 会拆成多个 chunk，
+        // 必须等所有 chunk 拼完后从 accumulated 中提取完整的 tool_calls。
         const stream = await this.model.stream(messages)
+        let accumulated: AIMessageChunk | null = null
         let fullContent = ''
-        let toolCalls: Array<{ id: string; name: string; args: Record<string, unknown> }> = []
-        const toolCallBuffers: Map<number, { id: string; name: string; argsStr: string }> = new Map()
 
         for await (const chunk of stream) {
+          // concat 累积：LangChain 会自动合并 tool_calls 的增量片段
+          accumulated = accumulated ? accumulated.concat(chunk) : chunk
+
+          // 实时 yield 文本 token
           const content = typeof chunk.content === 'string' ? chunk.content : ''
           if (content) {
             fullContent += content
             yield { type: 'token', content }
           }
+        }
 
-          if (chunk.tool_calls && chunk.tool_calls.length > 0) {
-            for (const tc of chunk.tool_calls) {
-              if (tc.id && tc.name) {
-                toolCalls.push({
-                  id: tc.id,
-                  name: tc.name,
-                  args: (tc.args as Record<string, unknown>) || {},
-                })
-              }
-            }
-          }
+        // 从累积的完整消息中提取 tool_calls（此时 args 已完整拼接）
+        const toolCalls: Array<{ id: string; name: string; args: Record<string, unknown> }> = []
 
-          if (chunk.additional_kwargs?.tool_calls) {
-            for (const tc of chunk.additional_kwargs.tool_calls as Array<{
-              index: number; id?: string; function?: { name?: string; arguments?: string }
-            }>) {
-              const idx = tc.index ?? 0
-              if (!toolCallBuffers.has(idx)) {
-                toolCallBuffers.set(idx, { id: '', name: '', argsStr: '' })
-              }
-              const buf = toolCallBuffers.get(idx)!
-              if (tc.id) buf.id = tc.id
-              if (tc.function?.name) buf.name = tc.function.name
-              if (tc.function?.arguments) buf.argsStr += tc.function.arguments
+        if (accumulated?.tool_calls && accumulated.tool_calls.length > 0) {
+          for (const tc of accumulated.tool_calls) {
+            if (tc.name) {
+              toolCalls.push({
+                id: tc.id || `call_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+                name: tc.name,
+                args: (tc.args as Record<string, unknown>) || {},
+              })
             }
           }
         }
 
-        if (toolCalls.length === 0 && toolCallBuffers.size > 0) {
-          for (const buf of toolCallBuffers.values()) {
-            if (buf.id && buf.name) {
+        // fallback: 从 additional_kwargs 中提取（兼容原始 OpenAI 格式）
+        if (toolCalls.length === 0 && accumulated?.additional_kwargs?.tool_calls) {
+          for (const tc of accumulated.additional_kwargs.tool_calls as Array<{
+            id?: string; function?: { name?: string; arguments?: string }
+          }>) {
+            if (tc.id && tc.function?.name) {
               let args: Record<string, unknown> = {}
-              try { args = JSON.parse(buf.argsStr) } catch { /* empty */ }
-              toolCalls.push({ id: buf.id, name: buf.name, args })
+              try { args = JSON.parse(tc.function.arguments || '{}') } catch { /* malformed */ }
+              toolCalls.push({ id: tc.id, name: tc.function.name, args })
             }
           }
         }
 
+        console.log('[Agent] LLM content:', fullContent.slice(0, 120) || '(empty)')
+        console.log('[Agent] tool_calls:', toolCalls.length)
+        if (toolCalls.length > 0) {
+          console.table(toolCalls.map(tc => ({ name: tc.name, id: tc.id, args: JSON.stringify(tc.args).slice(0, 120) })))
+        }
+
+        // 无 tool call —— 本轮对话结束
         if (toolCalls.length === 0) {
+          console.log('[Agent] no tool calls, finishing')
+          console.groupEnd()
           const aiMsg = new AIMessage(fullContent)
           this.history.push(aiMsg)
           yield { type: 'done' }
           return
         }
 
+        // 将 AI 的 tool_calls 响应加入消息链
         const aiMsg = new AIMessage({
           content: fullContent,
           tool_calls: toolCalls.map(tc => ({
@@ -155,6 +191,7 @@ export class C1oudAgent {
         messages.push(aiMsg)
         this.history.push(aiMsg)
 
+        // 依次执行每个 tool 并收集结果
         for (const tc of toolCalls) {
           yield { type: 'tool_start', toolName: tc.name, toolArgs: tc.args }
 
@@ -163,13 +200,17 @@ export class C1oudAgent {
 
           if (targetTool) {
             try {
-              result = await targetTool.invoke(tc.args)
+              // allTools 是异构 tool 联合数组，invoke 签名各异，
+              // 运行时由 zod schema 校验参数，这里用 as never 绕过静态类型
+              result = await (targetTool as StructuredToolInterface).invoke(tc.args as never)
             } catch (err) {
               result = JSON.stringify({ error: String(err) })
             }
           } else {
             result = JSON.stringify({ error: `Unknown tool: ${tc.name}` })
           }
+
+          console.log(`[Agent] tool "${tc.name}" result:`, result.slice(0, 200))
 
           yield { type: 'tool_end', toolName: tc.name, toolResult: result }
 
@@ -181,18 +222,23 @@ export class C1oudAgent {
           this.history.push(toolMsg)
         }
 
+        console.groupEnd()
         toolRound++
       } catch (err) {
+        console.error('[Agent] error in round', toolRound, err)
+        console.groupEnd()
         const errorMsg = err instanceof Error ? err.message : String(err)
         yield { type: 'error', content: `请求失败: ${errorMsg}` }
         return
       }
     }
 
+    console.warn('[Agent] tool round limit reached!', { toolRound, MAX_TOOL_ROUNDS })
     yield { type: 'error', content: '工具调用轮次超限，请简化问题后重试。' }
   }
 }
 
+/** 单例，整个应用共享同一个 Agent 实例及其对话历史 */
 let agentInstance: C1oudAgent | null = null
 
 export function getAgent(): C1oudAgent {
