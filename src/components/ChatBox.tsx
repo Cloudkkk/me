@@ -6,7 +6,23 @@ interface Message {
   content: string
 }
 
-const API_KEY = 'sk-sp-D.HHEXX.9Dwy.MEYCIQDgncZOvX8lsyZH/uofOa9w3AwMDPDtTQqOzqSOwuOV1AIhAOLiHDUTabeRp2MWN41kNFO+MRdhlW08FAbznE3WtJMR'
+const PROXY_URL = import.meta.env.VITE_CHAT_PROXY_URL
+const API_KEY = import.meta.env.VITE_CHAT_API_KEY || ''
+const isDev = import.meta.env.DEV
+
+function getChatEndpoint() {
+  if (PROXY_URL) return PROXY_URL
+  if (isDev) return '/api/chat'
+  return ''
+}
+
+function getChatHeaders() {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (isDev && API_KEY) {
+    headers['Authorization'] = `Bearer ${API_KEY}`
+  }
+  return headers
+}
 
 const SYSTEM_PROMPT = `你是 C1oud 的个人博客 AI 助手。C1oud 是一个热爱编程的开发者，擅长全栈开发、云原生技术和 AI。
 请用简洁、友好、略带极客气质的风格回答访客的问题。回答控制在 2-3 句话以内。不要使用 emoji。`
@@ -24,6 +40,8 @@ export default function ChatBox({ onFocusChange }: ChatBoxProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
+  const endpoint = getChatEndpoint()
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, streaming])
@@ -39,7 +57,7 @@ export default function ChatBox({ onFocusChange }: ChatBoxProps) {
 
   const sendMessage = useCallback(async () => {
     const text = input.trim()
-    if (!text || loading) return
+    if (!text || loading || !endpoint) return
 
     const userMsg: Message = { role: 'user', content: text }
     const newMessages = [...messages, userMsg]
@@ -49,12 +67,9 @@ export default function ChatBox({ onFocusChange }: ChatBoxProps) {
     setStreaming('')
 
     try {
-      const res = await fetch('/api/chat', {
+      const res = await fetch(endpoint, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${API_KEY}`,
-        },
+        headers: getChatHeaders(),
         body: JSON.stringify({
           model: 'qwen3.6-plus',
           messages: [
@@ -113,7 +128,7 @@ export default function ChatBox({ onFocusChange }: ChatBoxProps) {
     } finally {
       setLoading(false)
     }
-  }, [input, loading, messages])
+  }, [input, loading, messages, endpoint])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -161,8 +176,8 @@ export default function ChatBox({ onFocusChange }: ChatBoxProps) {
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="你想问我什么？"
-          disabled={loading}
+          placeholder={endpoint ? '你想问我什么？' : '// 对话服务未配置'}
+          disabled={loading || !endpoint}
           spellCheck={false}
           autoComplete="off"
         />
