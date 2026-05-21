@@ -1,9 +1,9 @@
-const TARGET = 'https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1/chat/completions'
+const BASE_TARGET = 'https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode'
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 }
 
 export default {
@@ -25,22 +25,31 @@ export default {
     }
 
     try {
+      const url = new URL(request.url)
+      const targetPath = url.pathname || '/v1/chat/completions'
+      const target = `${BASE_TARGET}${targetPath}`
+
       const body = await request.json()
 
-      const upstream = await fetch(TARGET, {
+      const payload = {
+        model: body.model || 'qwen3.6-plus',
+        messages: body.messages || [],
+        max_tokens: Math.min(body.max_tokens || 512, 1024),
+        temperature: body.temperature ?? 0.7,
+        stream: !!body.stream,
+        enable_thinking: false,
+      }
+
+      if (body.tools) payload.tools = body.tools
+      if (body.tool_choice) payload.tool_choice = body.tool_choice
+
+      const upstream = await fetch(target, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiKey}`,
         },
-        body: JSON.stringify({
-          model: body.model || 'qwen3.6-plus',
-          messages: body.messages || [],
-          max_tokens: Math.min(body.max_tokens || 256, 512),
-          temperature: body.temperature ?? 0.7,
-          stream: !!body.stream,
-          enable_thinking: false,
-        }),
+        body: JSON.stringify(payload),
       })
 
       if (body.stream) {

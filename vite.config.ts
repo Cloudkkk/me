@@ -10,6 +10,10 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api\/chat/, '/compatible-mode/v1/chat/completions'),
       },
+      '/v1': {
+        target: 'https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode',
+        changeOrigin: true,
+      },
     },
   },
 })

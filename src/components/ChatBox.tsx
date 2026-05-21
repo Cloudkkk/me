@@ -1,50 +1,68 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useAgent, type ChatMessage } from '../agent'
 import './ChatBox.css'
-
-interface Message {
-  role: 'user' | 'assistant'
-  content: string
-}
-
-const PROXY_URL = import.meta.env.VITE_CHAT_PROXY_URL
-const API_KEY = import.meta.env.VITE_CHAT_API_KEY || ''
-const isDev = import.meta.env.DEV
-
-function getChatEndpoint() {
-  if (PROXY_URL) return PROXY_URL
-  if (isDev) return '/api/chat'
-  return ''
-}
-
-function getChatHeaders() {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (isDev && API_KEY) {
-    headers['Authorization'] = `Bearer ${API_KEY}`
-  }
-  return headers
-}
-
-const SYSTEM_PROMPT = `你是 C1oud 的个人博客 AI 助手。C1oud 是一个热爱编程的开发者，擅长全栈开发、云原生技术和 AI。
-请用简洁、友好、略带极客气质的风格回答访客的问题。回答控制在 2-3 句话以内。不要使用 emoji。`
 
 interface ChatBoxProps {
   onFocusChange?: (focused: boolean) => void
 }
 
+const TOOL_LABELS: Record<string, string> = {
+  knowledge_search: '检索知识库',
+  navigate_to: '导航页面',
+  query_timeline: '查询时间线',
+  get_current_time: '获取时间',
+}
+
+function ToolIndicator({ tools }: { tools: string[] }) {
+  if (tools.length === 0) return null
+  return (
+    <div className="chat-line tool-indicator">
+      <span className="line-prefix">#</span>
+      <span className="line-text tool-text">
+        {tools.map(t => TOOL_LABELS[t] || t).join(' / ')}
+        <span className="tool-dots"><span>.</span><span>.</span><span>.</span></span>
+      </span>
+    </div>
+  )
+}
+
+function MessageLine({ msg }: { msg: ChatMessage }) {
+  return (
+    <div className={`chat-line ${msg.role}`}>
+      <span className="line-prefix">{msg.role === 'user' ? '>' : '$'}</span>
+      <span className="line-text">
+        {msg.content}
+        {msg.toolCalls && msg.toolCalls.length > 0 && (
+          <span className="tool-badge">
+            {msg.toolCalls.map(tc => TOOL_LABELS[tc.name] || tc.name).join(', ')}
+          </span>
+        )}
+      </span>
+    </div>
+  )
+}
+
 export default function ChatBox({ onFocusChange }: ChatBoxProps) {
-  const [messages, setMessages] = useState<Message[]>([])
+  const {
+    messages,
+    streaming,
+    loading,
+    activeTools,
+    isConfigured,
+    send,
+    clear,
+  } = useAgent()
+
   const [input, setInput] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [streaming, setStreaming] = useState('')
   const [focused, setFocused] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-
-  const endpoint = getChatEndpoint()
+  const navigate = useNavigate()
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, streaming])
+  }, [messages, streaming, activeTools])
 
   useEffect(() => {
     onFocusChange?.(focused || loading)
@@ -55,85 +73,22 @@ export default function ChatBox({ onFocusChange }: ChatBoxProps) {
     if (!loading) setFocused(false)
   }
 
-  const sendMessage = useCallback(async () => {
+  const handleSend = useCallback(async () => {
     const text = input.trim()
-    if (!text || loading || !endpoint) return
+    if (!text || loading) return
 
-    const userMsg: Message = { role: 'user', content: text }
-    const newMessages = [...messages, userMsg]
-    setMessages(newMessages)
     setInput('')
-    setLoading(true)
-    setStreaming('')
+    const navAction = await send(text)
 
-    try {
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: getChatHeaders(),
-        body: JSON.stringify({
-          model: 'qwen3.6-plus',
-          messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
-            ...newMessages.slice(-6),
-          ],
-          max_tokens: 256,
-          temperature: 0.7,
-          stream: true,
-          enable_thinking: false,
-        }),
-      })
-
-      if (!res.ok || !res.body) {
-        throw new Error('request failed')
-      }
-
-      const reader = res.body.getReader()
-      const decoder = new TextDecoder()
-      let fullText = ''
-      let buffer = ''
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() || ''
-
-        for (const line of lines) {
-          const trimmed = line.trim()
-          if (!trimmed.startsWith('data:')) continue
-          const data = trimmed.slice(5).trim()
-          if (data === '[DONE]') break
-
-          try {
-            const json = JSON.parse(data)
-            const delta = json.choices?.[0]?.delta?.content
-            if (delta) {
-              fullText += delta
-              setStreaming(fullText)
-            }
-          } catch {
-            // skip malformed chunks
-          }
-        }
-      }
-
-      const finalText = fullText || '// 信号丢失，请重试'
-      setStreaming('')
-      setMessages(prev => [...prev, { role: 'assistant', content: finalText }])
-    } catch {
-      setStreaming('')
-      setMessages(prev => [...prev, { role: 'assistant', content: '// 连接超时，请稍后再试' }])
-    } finally {
-      setLoading(false)
+    if (navAction) {
+      navigate(navAction.path)
     }
-  }, [input, loading, messages, endpoint])
+  }, [input, loading, send, navigate])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      sendMessage()
+      handleSend()
     }
   }
 
@@ -146,14 +101,15 @@ export default function ChatBox({ onFocusChange }: ChatBoxProps) {
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      {expanded && (messages.length > 0 || streaming) && (
+      {expanded && (messages.length > 0 || streaming || activeTools.length > 0) && (
         <div className="chatbox-history">
           {messages.map((msg, i) => (
-            <div key={i} className={`chat-line ${msg.role}`}>
-              <span className="line-prefix">{msg.role === 'user' ? '>' : '$'}</span>
-              <span className="line-text">{msg.content}</span>
-            </div>
+            <MessageLine key={i} msg={msg} />
           ))}
+
+          {activeTools.length > 0 && (
+            <ToolIndicator tools={activeTools} />
+          )}
 
           {streaming && (
             <div className="chat-line assistant">
@@ -176,11 +132,16 @@ export default function ChatBox({ onFocusChange }: ChatBoxProps) {
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={endpoint ? '你想问我什么？' : '// 对话服务未配置'}
-          disabled={loading || !endpoint}
+          placeholder={isConfigured ? '你想问我什么？' : '// 对话服务未配置'}
+          disabled={loading || !isConfigured}
           spellCheck={false}
           autoComplete="off"
         />
+        {messages.length > 0 && !loading && (
+          <button className="clear-btn" onClick={clear} title="清空对话">
+            [x]
+          </button>
+        )}
       </div>
     </div>
   )
