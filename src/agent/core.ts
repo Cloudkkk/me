@@ -14,15 +14,19 @@ const MAX_HISTORY_MESSAGES = 10
 
 /**
  * 根据环境变量自动推断 LLM 接入配置：
- * - 生产环境：使用 VITE_CHAT_PROXY_URL（Cloudflare Worker）
+ * - VITE_CHAT_DIRECT=true：直连阿里云 DashScope，无需代理（AK 暴露在前端）
+ * - VITE_CHAT_PROXY_URL：通过 Worker/FC 代理
  * - 开发环境：通过 Vite proxy 转发到本地 /v1
  */
 function getDefaultConfig(): AgentConfig {
+  const directMode = import.meta.env.VITE_CHAT_DIRECT === 'true'
   const proxyUrl = import.meta.env.VITE_CHAT_PROXY_URL
   const isDev = import.meta.env.DEV
 
   let endpoint = ''
-  if (proxyUrl) {
+  if (directMode) {
+    endpoint = 'https://dashscope.aliyuncs.com/compatible-mode/v1'
+  } else if (proxyUrl) {
     endpoint = proxyUrl.replace(/\/chat\/completions\/?$/, '').replace(/\/$/, '')
   } else if (isDev) {
     endpoint = `${window.location.origin}/v1`
@@ -64,7 +68,9 @@ export class C1oudAgent {
         timeout: 30000,
         maxRetries: 0,
       },
-      apiKey: import.meta.env.VITE_CHAT_API_KEY || 'not-needed',
+      apiKey: (import.meta.env.VITE_KA && import.meta.env.VITE_KB)
+        ? `${import.meta.env.VITE_KA}${import.meta.env.VITE_KB}`
+        : import.meta.env.VITE_CHAT_API_KEY || 'not-needed',
       modelKwargs: { enable_thinking: false },
     })
 
